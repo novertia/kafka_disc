@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+application {
+    mainClass = 'com.example.kafkadisc.Server'
+}
+
+task runBroker(type: JavaExec) {
+    group = "Execution"
+    description = "Run the Broker class"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.kafkadisc.Server'
+    standardInput = System.in
+}
+
+
+task runClient(type: JavaExec) {
+    group = "Execution"
+    description = "Run the Client class"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.kafkadisc.Client'
+    standardInput = System.in
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
