@@ -8,26 +8,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Server {
     private static final int PORT = 8080;
-    private static final int TTL_MS = 100000; // 10 seconds TTL
+    private static final int TTL_MS = 600000; // 10 seconds TTL
     private static final int MAX_CONNECTIONS = 3;
-
-    private static class ClientSession {
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
-        long lastActiveTime;
-
-        ClientSession() {
-            this.lastActiveTime = System.currentTimeMillis();
-        }
-
-        void updateTime() {
-            this.lastActiveTime = System.currentTimeMillis();
-        }
-    }
 
     public static void main(String[] args) {
         ExecutorService executor = Executors.newFixedThreadPool(MAX_CONNECTIONS);
@@ -87,7 +75,7 @@ public class Server {
         ClientSession session = (ClientSession) key.attachment();
 
         try {
-            int bytesRead = channel.read(session.buffer);
+            int bytesRead = channel.read(session.getBuffer());
             if (bytesRead == -1) {
                 System.out.println("Client disconnected: " + channel.getRemoteAddress());
                 closeConnection(key);
@@ -96,10 +84,10 @@ public class Server {
 
             if (bytesRead > 0) {
                 session.updateTime();
-                session.buffer.flip();
-                String data = StandardCharsets.UTF_8.decode(session.buffer).toString();
-                System.out.println("Received from " + channel.getRemoteAddress() + ": " + data.trim());
-                session.buffer.clear();
+                List<String> data = session.readAndClear();
+                for (String packet : data) {
+                    System.out.println("Received from " + channel.getRemoteAddress() + ": " + packet.trim());
+                }
             }
 
             // Re-enable interest
@@ -115,11 +103,10 @@ public class Server {
     }
 
     private static void checkTTL(Selector selector) {
-        long now = System.currentTimeMillis();
         for (SelectionKey key : selector.keys()) {
             if (key.attachment() instanceof ClientSession) {
                 ClientSession session = (ClientSession) key.attachment();
-                if (now - session.lastActiveTime > TTL_MS) {
+                if (session.isExpired(TTL_MS)) {
                     try {
                         SocketChannel channel = (SocketChannel) key.channel();
                         System.out.println("Closing idle connection (TTL expired): " + channel.getRemoteAddress());
