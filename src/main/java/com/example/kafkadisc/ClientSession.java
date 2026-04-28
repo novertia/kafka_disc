@@ -28,16 +28,14 @@ public class ClientSession {
      * Size must be < 1MB.
      * Partial packets or partial headers are kept in the buffer for the next read.
      */
-    public List<String> readAndClear() {
-        List<String> packets = new ArrayList<>();
+    public List<Produce> readAndClear() {
+        List<Produce> packets = new ArrayList<>();
         buffer.flip(); // Switch to read mode
 
         try {
             while (buffer.remaining() >= 4) {
                 buffer.mark(); // Mark position before size header
                 int size = buffer.getInt();
-
-
 
                 if (buffer.remaining() < size) {
                     // Full packet not yet available
@@ -52,7 +50,8 @@ public class ClientSession {
                     System.err.println("Error: Packet size " + size + " is invalid or exceeds 1MB limit.");
                     continue;
                 }
-                packets.add(new String(bytes, StandardCharsets.UTF_8));
+                Produce packet = Serializer.decode(bytes);
+                packets.add(packet);
             }
         } catch (Exception e) {
             System.err.println("Exception during packet processing: " + e.getMessage());

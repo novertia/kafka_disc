@@ -84,9 +84,9 @@ public class Server {
 
             if (bytesRead > 0) {
                 session.updateTime();
-                List<String> data = session.readAndClear();
-                for (String packet : data) {
-                    System.out.println("Received from " + channel.getRemoteAddress() + ": " + packet.trim());
+                List<Produce> data = session.readAndClear();
+                for (Produce packet : data) {
+                    System.out.println("Received from " + channel.getRemoteAddress() + ": " + packet.data);
                 }
             }
 

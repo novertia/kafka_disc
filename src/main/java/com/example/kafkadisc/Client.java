@@ -16,16 +16,15 @@ public class Client {
                 System.out.println("Connected to server");
 
                 DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                String message1 = "Hello ";
-                String message2 = "from ";
-                String message3 = "Client!";
-                String message = message1 + message2 + message3;
-                byte[] bytes1 = message1.getBytes(StandardCharsets.UTF_8);
-                byte[] bytes2 = message2.getBytes(StandardCharsets.UTF_8);
-                byte[] bytes3 = message3.getBytes(StandardCharsets.UTF_8);
-                byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
+                Produce message1 = new Produce("Hello ");
+                Produce message2 = new Produce("from ");
+                Produce message3 = new Produce("client 1");
+                Produce message = new Produce(message1.data + message2.data + message3.data);
+                byte[] bytes1 = Serializer.encode(message1);
+                byte[] bytes2 = Serializer.encode(message2);
+                byte[] bytes3 = Serializer.encode(message3);
+                byte[] bytes = Serializer.encode(message);
                 // Send 4-byte size header
-                out.writeInt(bytes.length);
                 // Send packet data
                 out.write(bytes1);
                 out.flush();
@@ -34,6 +33,8 @@ public class Client {
                 out.flush();
                 sleep(1000);
                 out.write(bytes3);
+                out.flush();
+                out.write(bytes);
                 out.flush();
                 System.out.println("Sent: " + message);
 
