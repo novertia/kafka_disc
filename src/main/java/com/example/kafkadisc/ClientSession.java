@@ -6,12 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ClientSession {
-    // 100MB buffer
+    // 100MB buffer for reading
     private final ByteBuffer buffer = ByteBuffer.allocate(100 * 1024 * 1024);
+    // 100MB buffer for writing
+    private final ByteBuffer responseBuffer = ByteBuffer.allocate(100 * 1024 * 1024);
     private long lastActiveTime;
 
     public ClientSession() {
         this.lastActiveTime = System.currentTimeMillis();
+        this.responseBuffer.flip(); // Start in read mode for the channel.write()
     }
 
     public void updateTime() {
@@ -20,6 +23,25 @@ public class ClientSession {
 
     public boolean isExpired(int ttlMs) {
         return System.currentTimeMillis() - this.lastActiveTime > ttlMs;
+    }
+
+    public void queueResponse(byte[] data) {
+        responseBuffer.clear(); // Reset position to 0 and limit to capacity for writing
+        responseBuffer.put(data);
+        responseBuffer.flip(); // Prepare for sending: limit = current position, position = 0
+    }
+
+    public void clearResponse() {
+        responseBuffer.clear();
+        responseBuffer.flip(); // Set limit to 0 so hasRemaining() is false
+    }
+
+    public ByteBuffer getResponseBuffer() {
+        return responseBuffer;
+    }
+
+    public boolean hasResponse() {
+        return responseBuffer.hasRemaining();
     }
 
     /**

@@ -87,14 +87,27 @@ public class Server {
                 List<Produce> data = session.readAndClear();
                 for (Produce packet : data) {
                     System.out.println("Received from " + channel.getRemoteAddress() + ": " + packet.data);
+                    
+                    // Send response for this specific packet
+                    ResponsePayload response = new ResponsePayload(true);
+                    byte[] responseBytes = Serializer.encode(response);
+                    session.queueResponse(responseBytes);
+                    
+                    // Write response directly to the channel
+                    ByteBuffer respBuf = session.getResponseBuffer();
+                    while (respBuf.hasRemaining()) {
+                        channel.write(respBuf);
+                    }
                 }
             }
 
             // Re-enable interest
-            if (key.isValid()) {
-                key.interestOps(key.interestOps() | SelectionKey.OP_READ);
-                selector.wakeup();
+            synchronized (key) {
+                if (key.isValid()) {
+                    key.interestOps(key.interestOps() | SelectionKey.OP_READ);
+                }
             }
+            selector.wakeup();
 
         } catch (IOException e) {
             System.err.println("IO Error reading from " + (key.isValid() ? "channel" : "closed key") + ": " + e.getMessage());

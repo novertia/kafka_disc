@@ -26,21 +26,39 @@ public class Client {
                 byte[] bytes = Serializer.encode(message);
                 // Send 4-byte size header
                 // Send packet data
+                DataInputStream in = new DataInputStream(socket.getInputStream());
+                
                 out.write(bytes1);
                 out.flush();
+                readResponse(in);
+                
                 sleep(1000);
                 out.write(bytes2);
                 out.flush();
+                readResponse(in);
+                
                 sleep(1000);
                 out.write(bytes3);
                 out.flush();
+                readResponse(in);
+                
                 out.write(bytes);
                 out.flush();
-                System.out.println("Sent: " + message);
+                readResponse(in);
+                
+                System.out.println("Sent all messages and received all responses.");
 
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException | InterruptedException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static void readResponse(DataInputStream in) throws IOException, ClassNotFoundException {
+        int responseSize = in.readInt();
+        byte[] responseBytes = new byte[responseSize];
+        in.readFully(responseBytes);
+        ResponsePayload response = Serializer.decode(responseBytes);
+        System.out.println("Received response: " + response);
     }
 }
