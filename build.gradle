@@ -9,6 +9,8 @@ repositories {
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
 application {
@@ -29,6 +31,14 @@ task runClient(type: JavaExec) {
     description = "Run the Client class"
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.example.kafkadisc.Client'
+    standardInput = System.in
+}
+
+task runConsumer(type: JavaExec) {
+    group = "Execution"
+    description = "Run the Consumer class"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.kafkadisc.Consumer'
     standardInput = System.in
 }
 

@@ -1,8 +1,12 @@
 package main.java.com.example.kafkadisc;
 
+import main.java.com.example.kafkadisc.Requests.Produce;
+import main.java.com.example.kafkadisc.Requests.ResponsePayload;
+import main.java.com.example.kafkadisc.Requests.StateInfo;
+import main.java.com.example.kafkadisc.Utils.ClientState;
+
 import java.io.*;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 
 import static java.lang.Thread.sleep;
 
@@ -16,10 +20,13 @@ public class Client {
                 System.out.println("Connected to server");
 
                 DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+                StateInfo state = new StateInfo(ClientState.PRODUCER);
+
                 Produce message1 = new Produce("Hello ");
                 Produce message2 = new Produce("from ");
                 Produce message3 = new Produce("client 1");
                 Produce message = new Produce(message1.data + message2.data + message3.data);
+                byte[] stateByte = Serializer.encode(state);
                 byte[] bytes1 = Serializer.encode(message1);
                 byte[] bytes2 = Serializer.encode(message2);
                 byte[] bytes3 = Serializer.encode(message3);
@@ -27,17 +34,20 @@ public class Client {
                 // Send 4-byte size header
                 // Send packet data
                 DataInputStream in = new DataInputStream(socket.getInputStream());
-                
+
+                out.write(stateByte);
+                out.flush();
+                readResponse(in);
+
+                System.out.println("Client reaches here");
                 out.write(bytes1);
                 out.flush();
                 readResponse(in);
                 
-                sleep(1000);
                 out.write(bytes2);
                 out.flush();
                 readResponse(in);
-                
-                sleep(1000);
+
                 out.write(bytes3);
                 out.flush();
                 readResponse(in);
@@ -48,7 +58,7 @@ public class Client {
                 
                 System.out.println("Sent all messages and received all responses.");
 
-            } catch (IOException | InterruptedException | ClassNotFoundException e) {
+            } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
         }

@@ -1,10 +1,14 @@
 package main.java.com.example.kafkadisc;
 
+import main.java.com.example.kafkadisc.Requests.FetchResponse;
+import main.java.com.example.kafkadisc.Requests.Produce;
+import main.java.com.example.kafkadisc.Requests.ResponsePayload;
+import main.java.com.example.kafkadisc.Utils.ClientState;
+
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
@@ -17,7 +21,19 @@ public class Server {
     private static final int TTL_MS = 600000; // 10 seconds TTL
     private static final int MAX_CONNECTIONS = 3;
 
+    private static ProducerService producerService;
+    private static ClientStateService clientStateService;
+    private static ResponseService responseService;
+    private static QueueService queueService;
+    private static ConsumerService consumerService;
+
+
     public static void main(String[] args) {
+        producerService = new ProducerService();
+        clientStateService = new ClientStateService();
+        responseService = new ResponseService();
+        queueService = new QueueService();
+        consumerService = new ConsumerService();
         ExecutorService executor = Executors.newFixedThreadPool(MAX_CONNECTIONS);
         
         try (ServerSocketChannel serverChannel = ServerSocketChannel.open();
@@ -47,8 +63,9 @@ public class Server {
                         handleAccept(serverChannel, selector);
                     } else if (key.isReadable()) {
                         // Hand off to worker
+                        System.out.println("Thi should be twice");
                         key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
-                        executor.submit(() -> handleRead(key, selector));
+                        executor.submit(() -> handleClient(key, selector));
                     }
                 }
                 
@@ -70,12 +87,14 @@ public class Server {
         System.out.println("Client connected: " + clientChannel.getRemoteAddress());
     }
 
-    private static void handleRead(SelectionKey key, Selector selector) {
+    private static void handleClient(SelectionKey key, Selector selector){
         SocketChannel channel = (SocketChannel) key.channel();
         ClientSession session = (ClientSession) key.attachment();
 
         try {
+            System.out.println("This should Souptik");
             int bytesRead = channel.read(session.getBuffer());
+            System.out.println("This should after session:" + bytesRead);
             if (bytesRead == -1) {
                 System.out.println("Client disconnected: " + channel.getRemoteAddress());
                 closeConnection(key);
@@ -84,29 +103,22 @@ public class Server {
 
             if (bytesRead > 0) {
                 session.updateTime();
-                List<Produce> data = session.readAndClear();
-                for (Produce packet : data) {
-                    System.out.println("Received from " + channel.getRemoteAddress() + ": " + packet.data);
-                    
-                    // Send response for this specific packet
-                    ResponsePayload response = new ResponsePayload(true);
-                    byte[] responseBytes = Serializer.encode(response);
-                    session.queueResponse(responseBytes);
-                    
-                    // Write response directly to the channel
-                    ByteBuffer respBuf = session.getResponseBuffer();
-                    while (respBuf.hasRemaining()) {
-                        channel.write(respBuf);
-                    }
+                System.out.println("Session state now" + session.getState());
+                if(session.state == ClientState.UNKNOWN)
+                    clientStateService.sessionStateChange(session, responseService, channel);
+                else if(session.state == ClientState.PRODUCER){
+                    System.out.println("Should be producer now");
+                    producerService.produce(queueService, session, responseService, channel);
                 }
+                else if(session.state == ClientState.CONSUMER){
+                    consumerService.getData(session, queueService, responseService, channel);
+                }
+
             }
 
-            // Re-enable interest
-            synchronized (key) {
-                if (key.isValid()) {
-                    key.interestOps(key.interestOps() | SelectionKey.OP_READ);
-                }
-            }
+            if (key.isValid())
+                key.interestOps(key.interestOps() | SelectionKey.OP_READ);
+
             selector.wakeup();
 
         } catch (IOException e) {

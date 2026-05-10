@@ -1,8 +1,8 @@
-package main.java.com.example.kafkadisc;
+package main.java.com.example.kafkadisc.Requests;
 
 import java.io.Serializable;
 
-public class ResponsePayload implements Serializable {
+public class ResponsePayload implements Packet {
     public boolean success;
 
     public ResponsePayload(boolean success) {

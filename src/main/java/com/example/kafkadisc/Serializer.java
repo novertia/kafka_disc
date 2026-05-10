@@ -1,5 +1,7 @@
 package main.java.com.example.kafkadisc;
 
+import main.java.com.example.kafkadisc.Requests.Packet;
+
 import java.io.*;
 import java.nio.ByteBuffer;
 
@@ -7,7 +9,7 @@ public class Serializer {
     // Encode: Class to Byte Stream
 
     private static final int ONE_MB = 1024 * 1024;
-    public static <T extends Serializable> byte[] encode(T obj) throws IOException {
+    public static <T extends Packet> byte[] encode(T obj) throws IOException {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
              ObjectOutputStream oos = new ObjectOutputStream(bos)) {
 
@@ -27,7 +29,7 @@ public class Serializer {
 
     // Decode: Byte array back to a specific Class type
     @SuppressWarnings("unchecked")
-    public static <T extends Serializable> T decode(byte[] data)
+    public static <T extends Packet> T decode(byte[] data)
             throws IOException, ClassNotFoundException {
 
         try (ByteArrayInputStream bis = new ByteArrayInputStream(data);

@@ -1,15 +1,19 @@
 package main.java.com.example.kafkadisc;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.Data;
+import main.java.com.example.kafkadisc.Requests.Packet;
+import main.java.com.example.kafkadisc.Requests.Produce;
+import main.java.com.example.kafkadisc.Utils.ClientState;
 
+import java.nio.ByteBuffer;
+
+@Data
 public class ClientSession {
     // 100MB buffer for reading
     private final ByteBuffer buffer = ByteBuffer.allocate(100 * 1024 * 1024);
     // 100MB buffer for writing
     private final ByteBuffer responseBuffer = ByteBuffer.allocate(100 * 1024 * 1024);
+    ClientState state = ClientState.UNKNOWN;
     private long lastActiveTime;
 
     public ClientSession() {
@@ -36,10 +40,6 @@ public class ClientSession {
         responseBuffer.flip(); // Set limit to 0 so hasRemaining() is false
     }
 
-    public ByteBuffer getResponseBuffer() {
-        return responseBuffer;
-    }
-
     public boolean hasResponse() {
         return responseBuffer.hasRemaining();
     }
@@ -50,43 +50,39 @@ public class ClientSession {
      * Size must be < 1MB.
      * Partial packets or partial headers are kept in the buffer for the next read.
      */
-    public List<Produce> readAndClear() {
-        List<Produce> packets = new ArrayList<>();
+    public <T extends Packet> T readAndClear(){
         buffer.flip(); // Switch to read mode
-
+        T packet = null;
         try {
-            while (buffer.remaining() >= 4) {
+            if (buffer.remaining() >= 4) {
                 buffer.mark(); // Mark position before size header
                 int size = buffer.getInt();
 
                 if (buffer.remaining() < size) {
                     // Full packet not yet available
                     buffer.reset(); // Move back to before size header
-                    break;
                 }
-
-                // Read full packet
-                byte[] bytes = new byte[size];
-                buffer.get(bytes);
-                if (size >= 1024 * 1024) {
-                    System.err.println("Error: Packet size " + size + " is invalid or exceeds 1MB limit.");
-                    continue;
+                else {
+                    // Read full packet
+                    byte[] bytes = new byte[size];
+                    buffer.get(bytes);
+                    if (size >= 1024 * 1024) {
+                        System.err.println("Error: Packet size " + size + " is invalid or exceeds 1MB limit.");
+                    }
+                    else{
+                        packet = Serializer.decode(bytes);
+                    }
                 }
-                Produce packet = Serializer.decode(bytes);
-                packets.add(packet);
             }
         } catch (Exception e) {
             System.err.println("Exception during packet processing: " + e.getMessage());
             buffer.clear();
-            return packets;
+            return packet;
         }
 
         // Keep partial data in the buffer
         buffer.compact();
-        return packets;
+        return packet;
     }
 
-    public ByteBuffer getBuffer() {
-        return buffer;
-    }
 }
