@@ -3,6 +3,7 @@ package main.java.com.example.kafkadisc;
 import main.java.com.example.kafkadisc.Requests.FetchResponse;
 import main.java.com.example.kafkadisc.Requests.Produce;
 import main.java.com.example.kafkadisc.Requests.ResponsePayload;
+import main.java.com.example.kafkadisc.Storage.LogStorage;
 import main.java.com.example.kafkadisc.Utils.ClientState;
 
 import java.io.*;
@@ -26,6 +27,7 @@ public class Server {
     private static ResponseService responseService;
     private static QueueService queueService;
     private static ConsumerService consumerService;
+    private static LogStorage logStorage;
 
 
     public static void main(String[] args) {
@@ -34,6 +36,7 @@ public class Server {
         responseService = new ResponseService();
         queueService = new QueueService();
         consumerService = new ConsumerService();
+        logStorage = new LogStorage();
         ExecutorService executor = Executors.newFixedThreadPool(MAX_CONNECTIONS);
         
         try (ServerSocketChannel serverChannel = ServerSocketChannel.open();
@@ -108,10 +111,10 @@ public class Server {
                     clientStateService.sessionStateChange(session, responseService, channel);
                 else if(session.state == ClientState.PRODUCER){
                     System.out.println("Should be producer now");
-                    producerService.produce(queueService, session, responseService, channel);
+                    producerService.produce(logStorage, session, responseService, channel);
                 }
                 else if(session.state == ClientState.CONSUMER){
-                    consumerService.getData(session, queueService, responseService, channel);
+                    consumerService.getData(session, logStorage, channel);
                 }
 
             }

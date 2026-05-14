@@ -52,7 +52,7 @@ public class Consumer {
         }
     }
 
-    private static void readAck(DataInputStream in) throws IOException, ClassNotFoundException{
+    private static void readAck(DataInputStream in) throws IOException, ClassNotFoundException {
         int responseSize = in.readInt();
         byte[] responseBytes = new byte[responseSize];
         in.readFully(responseBytes);
@@ -60,12 +60,11 @@ public class Consumer {
         System.out.println("Received ack for consumer: " + response);
     }
 
-    private static void readResponse(DataInputStream in) throws IOException, ClassNotFoundException {
-        int responseSize = in.readInt();
-        byte[] responseBytes = new byte[responseSize];
-        in.readFully(responseBytes);
-        FetchResponse response = Serializer.decode(responseBytes);
-        if(response != null && response.dataPresent)
-            System.out.println("Received response: " + response.payload);
+    private static void readResponse(DataInputStream in) throws IOException {
+        int payloadSize = in.readInt();
+        byte[] payloadBytes = new byte[payloadSize];
+        in.readFully(payloadBytes);
+        String payload = new String(payloadBytes, java.nio.charset.StandardCharsets.UTF_8);
+        System.out.println("Received response payload: " + payload);
     }
 }

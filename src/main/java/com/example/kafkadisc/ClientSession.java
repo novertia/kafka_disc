@@ -15,9 +15,11 @@ public class ClientSession {
     private final ByteBuffer responseBuffer = ByteBuffer.allocate(100 * 1024 * 1024);
     ClientState state = ClientState.UNKNOWN;
     private long lastActiveTime;
+    long offset;
 
     public ClientSession() {
         this.lastActiveTime = System.currentTimeMillis();
+        offset = 0;
         this.responseBuffer.flip(); // Start in read mode for the channel.write()
     }
 
